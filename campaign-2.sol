@@ -14,18 +14,34 @@ pragma solidity ^0.4.18;
  * @dev Math operations with safety checks that throw on error
  */
 library SafeMath {
-  function mul(uint256 a, uint256 b) internal constant returns (uint256) {
+  function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+    if (a == 0) {
+      return 0;
+    }
     uint256 c = a * b;
-    assert(a == 0 || c / a == b);
+    assert(c / a == b);
     return c;
   }
 
-  function add(uint256 a, uint256 b) internal constant returns (uint256) {
+  function div(uint256 a, uint256 b) internal pure returns (uint256) {
+    // assert(b > 0); // Solidity automatically throws when dividing by 0
+    uint256 c = a / b;
+    // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+    return c;
+  }
+
+  function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+    assert(b <= a);
+    return a - b;
+  }
+
+  function add(uint256 a, uint256 b) internal pure returns (uint256) {
     uint256 c = a + b;
     assert(c >= a);
     return c;
   }
 }
+
 
 /**
  * @title Ownable
@@ -40,7 +56,7 @@ contract Ownable {
    * @dev The Ownable constructor sets the original `owner` of the contract to the sender
    * account.
    */
-  function Ownable() {
+  function Ownable() public {
     owner = msg.sender;
   }
 
@@ -56,7 +72,7 @@ contract Ownable {
    * @dev Allows the current owner to transfer control of the contract to a newOwner.
    * @param newOwner The address to transfer ownership to.
    */
-  function transferOwnership(address newOwner) onlyOwner {
+  function transferOwnership(address newOwner) public onlyOwner {
     require(newOwner != address(0));
     owner = newOwner;
   }
@@ -67,8 +83,8 @@ contract Ownable {
  * @dev API interface for interacting with the WILD Token contract 
  */
 interface Token {
-  function transfer(address _to, uint256 _value) returns (bool);
-  function balanceOf(address _owner) constant returns (uint256 balance);
+  function transfer(address _to, uint256 _value) public returns (bool);
+  function balanceOf(address _owner) public constant returns (uint256 balance);
 }
 
 contract Crowdsale is Ownable {
@@ -77,12 +93,12 @@ contract Crowdsale is Ownable {
 
   Token public token;
 
-  uint256 public constant RATE = 20; // Number of tokens per Ether
-  uint256 public constant CAP = 10; // Cap in Ether
-  uint256 public constant START = 1508823125; // Sep 5, 2017 @ 08:00 GMT+1
-  uint256 public constant DAYS = 7; // 7 Days
+  uint256 public constant RATE = 100; // Number of tokens per Ether
+  uint256 public constant CAP = 100; // Cap in Ether
+  uint256 public constant START = 1511776800; // Monday, November 27, 2017 10:00:00 AM GMT
+  uint256 public constant DAYS = 100; // 100 Days
 
-  uint256 public constant initialTokens = 200 * 10**18; // Initial number of tokens available
+  uint256 public constant initialTokens = 100 * 10**18; // Initial number of tokens available
   bool public initialized = false;
   uint256 public raisedAmount = 0;
 
@@ -95,18 +111,18 @@ contract Crowdsale is Ownable {
     _;
   }
 
-  function Crowdsale(address _tokenAddr) {
+  function Crowdsale(address _tokenAddr) public {
       require(_tokenAddr != 0);
       token = Token(_tokenAddr);
   }
   
-  function initialize() onlyOwner {
+  function initialize() public onlyOwner {
       require(initialized == false); // Can only be initialized once
       require(tokensAvailable() == initialTokens); // Must have some tokens allocated
       initialized = true;
   }
 
-  function isActive() constant returns (bool) {
+  function isActive() public constant returns (bool) {
     return (
         initialized == true &&
         now >= START && // Must be after the START date
@@ -115,18 +131,18 @@ contract Crowdsale is Ownable {
     );
   }
 
-  function goalReached() constant returns (bool) {
+  function goalReached() public constant returns (bool) {
     return (raisedAmount >= CAP * 1 ether);
   }
 
-  function () payable {
+  function () public payable {
     buyTokens();
   }
 
   /**
   * @dev function that sells available tokens
   */
-  function buyTokens() payable whenSaleIsActive {
+  function buyTokens() public payable whenSaleIsActive {
 
     // Calculate tokens to sell
     uint256 weiAmount = msg.value;
@@ -147,14 +163,14 @@ contract Crowdsale is Ownable {
   /**
    * @dev returns the number of tokens allocated to this contract
    */
-  function tokensAvailable() constant returns (uint256) {
+  function tokensAvailable() public constant returns (uint256) {
     return token.balanceOf(this);
   }
 
   /**
    * @notice Terminate contract and refund to owner
    */
-  function destroy() onlyOwner {
+  function destroy() public onlyOwner {
     // Transfer tokens back to owner
     uint256 balance = token.balanceOf(this);
     assert(balance > 0);
